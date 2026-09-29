@@ -11,7 +11,7 @@ import { CreateTaskDto } from './dto/create-task.dto.js';
 import { TaskListQueryDto } from './dto/task-list-query.dto.js';
 import { CommentDto, LabelDto, TaskListDto, TaskListItemDto } from './dto/task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from './pagination.js';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from './paginationConst.js';
 
 const taskListSelect = {
   id: true,

@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
-import { MAX_PAGE_SIZE } from '../pagination.js';
+import { MAX_PAGE_SIZE } from '../paginationConst.js';
 
 const taskStatuses = ['todo', 'in_progress', 'done', 'blocked'] as const;
 
