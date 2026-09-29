@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
-import { HttpExceptionFilter } from './common/http-exception.filter.js';
+import { HttpExceptionFilter } from './utils/common/http-exception.filter.js';
 
 async function app() {
   const app = await NestFactory.create(AppModule);
