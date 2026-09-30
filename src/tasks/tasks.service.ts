@@ -11,7 +11,8 @@ import { CreateTaskDto } from './dto/create-task.dto.js';
 import { TaskListQueryDto } from './dto/task-list-query.dto.js';
 import { CommentDto, LabelDto, TaskListDto, TaskListItemDto } from './dto/task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from './paginationConst.js';
+import { TaskStatus } from './task.constants.js';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '../utils/pagination.const.js';
 
 const taskListSelect = {
   id: true,
@@ -42,14 +43,14 @@ function toListItem(task: {
   status: string;
   assignee: { id: string; email: string } | null;
   labels: { label: { id: string; name: string } }[];
-}) {
-  return new TaskListItemDto({
+}): TaskListItemDto {
+  return {
     id: task.id,
     title: task.title,
     status: task.status,
     assignee: task.assignee,
     labels: task.labels.map((row) => row.label),
-  });
+  };
 }
 
 @Injectable()
@@ -66,7 +67,7 @@ export class TasksService {
       data: {
         title: dto.title,
         description: dto.description,
-        status: dto.status ?? 'todo',
+        status: dto.status ?? TaskStatus.Todo,
         projectId,
         assigneeId: dto.assigneeId,
       },
@@ -153,7 +154,7 @@ export class TasksService {
         createdAt: true,
       },
     });
-    return new CommentDto(comment);
+    return comment;
   }
 
   async attachLabel(taskId: string, dto: AttachLabelDto): Promise<LabelDto> {
@@ -175,7 +176,7 @@ export class TasksService {
     });
     
 
-    return Object.assign(new LabelDto(), label);
+    return label;
   }
 
   private async requireProject(projectId: string) {

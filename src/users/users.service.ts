@@ -32,7 +32,7 @@ export class UsersService {
         },
         select: userSelect,
       });
-      return new UserDto(user);
+      return user;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -49,7 +49,7 @@ export class UsersService {
       select: userSelect,
       orderBy: { id: 'asc' },
     });
-    return users.map((user) => new UserDto(user));
+    return users;
   }
 
   async findOne(id: string): Promise<UserDto> {
@@ -60,6 +60,6 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User ${id} not found`);
     }
-    return new UserDto(user);
+    return user;
   }
 }
