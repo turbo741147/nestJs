@@ -1,6 +1,5 @@
-import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-
-const taskStatuses = ['todo', 'in_progress', 'done', 'blocked'] as const;
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { TaskStatus } from '../task.constants.js';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -13,8 +12,8 @@ export class UpdateTaskDto {
   description?: string;
 
   @IsOptional()
-  @IsIn(taskStatuses)
-  status?: (typeof taskStatuses)[number];
+  @IsEnum(TaskStatus)
+  status?: TaskStatus;
 
   @IsOptional()
   @IsString()

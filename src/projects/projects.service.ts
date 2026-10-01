@@ -25,7 +25,7 @@ export class ProjectsService {
       },
       select: projectSelect,
     });
-    return new ProjectDto(project);
+    return project;
   }
 
   async findAll(): Promise<ProjectDto[]> {
@@ -34,6 +34,6 @@ export class ProjectsService {
       orderBy: { id: 'asc' },
     });
 
-    return projects.map((project) => new ProjectDto(project));
+    return projects;
   }
 }

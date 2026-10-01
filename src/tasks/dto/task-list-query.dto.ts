@@ -1,13 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
-import { MAX_PAGE_SIZE } from '../paginationConst.js';
-
-const taskStatuses = ['todo', 'in_progress', 'done', 'blocked'] as const;
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { MAX_PAGE_SIZE } from '../../utils/pagination.const.js';
+import { TaskStatus } from '../task.constants.js';
 
 export class TaskListQueryDto {
   @IsOptional()
-  @IsIn(taskStatuses)
-  status?: (typeof taskStatuses)[number];
+  @IsEnum(TaskStatus)
+  status?: TaskStatus;
 
   @IsOptional()
   @IsString()
