@@ -1,0 +1,44 @@
+
+// Не оставлять временную таблицу жить дольше, чем нужно.
+// Используем ON COMMIT DROP
+DROP TABLE IF EXISTS tmp_escalation_candidates;
+
+CREATE TEMP TABLE tmp_escalation_candidates
+ON COMMIT DROP
+AS
+SELECT
+  tasks.project_id,
+  tasks.id AS task_id,
+  tasks.title,
+  (CURRENT_DATE - tasks.created_at::date) AS age_days
+FROM tasks
+JOIN projects ON projects.id = tasks.project_id
+WHERE tasks.status <> 'done'
+  AND tasks.deleted_at IS NULL
+  AND projects.status = 'active'
+  AND (CURRENT_DATE - tasks.created_at::date) > 7;
+
+CREATE INDEX tmp_escalation_candidates_project_id_idx
+  ON tmp_escalation_candidates (project_id);
+
+SELECT
+  project_id,
+  task_id,
+  title,
+  age_days,
+  priority_rank
+FROM (
+  SELECT
+    project_id,
+    task_id,
+    title,
+    age_days,
+    ROW_NUMBER() OVER (
+      PARTITION BY project_id
+      ORDER BY age_days DESC, task_id
+    ) AS priority_rank
+  FROM tmp_escalation_candidates
+) ranked
+WHERE priority_rank <= 5
+ORDER BY project_id, priority_rank;
+
