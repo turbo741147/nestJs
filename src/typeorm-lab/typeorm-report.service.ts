@@ -67,13 +67,11 @@ export class TypeormReportService {
     }
 
     const rows = await query.getRawMany<TasksByStatusRow>();
-    return rows.map((row) =>
-      Object.assign(new TasksByStatusDto(), {
-        projectId: row.projectId,
-        status: row.status,
-        tasksCount: Number(row.tasksCount),
-      }),
-    );
+    return rows.map((row) => ({
+      projectId: row.projectId,
+      status: row.status,
+      tasksCount: Number(row.tasksCount),
+    }));
   }
 
   // DISTINCT ON привязан к ORDER BY. В построителе эта связь теряется, в SQL она видна сразу.
@@ -93,64 +91,72 @@ export class TypeormReportService {
       .addOrderBy('task.id', 'DESC')
       .getRawMany<LatestTaskRow>();
 
-    return rows.map((row) =>
-      Object.assign(new LatestTaskDto(), {
-        userId: row.userId,
-        userName: row.userName,
-        taskId: row.taskId,
-        title: row.title,
-        status: row.status,
-        createdAt: row.createdAt,
-      }),
-    );
+    return rows.map((row) => ({
+      userId: row.userId,
+      userName: row.userName,
+      taskId: row.taskId,
+      title: row.title,
+      status: row.status,
+      createdAt: row.createdAt,
+    }));
   }
 
-  // CTE и ROW_NUMBER в построителе распадаются на куски. Пороги передаются параметрами $1 и $2.
+  // Два CTE вешаются на один построитель: вложенный addCommonTableExpression TypeORM не поддерживает.
+  // ROW_NUMBER остаётся SQL-выражением — отдельного метода для оконных функций нет.
   async escalationCandidates(): Promise<EscalationCandidateDto[]> {
-    const rows = await this.tasks.query<EscalationRow[]>(
-      `
-      WITH escalation_candidates AS (
-        SELECT
-          tasks.project_id,
-          tasks.id AS task_id,
-          tasks.title,
-          (CURRENT_DATE - tasks.created_at::date) AS age_days
-        FROM tasks
-        INNER JOIN projects ON projects.id = tasks.project_id
-        WHERE tasks.status <> 'done'
-          AND tasks.deleted_at IS NULL
-          AND projects.status = 'active'
-          AND (CURRENT_DATE - tasks.created_at::date) > $1
-      ),
-      ranked AS (
-        SELECT
-          project_id AS "projectId",
-          task_id AS "taskId",
-          title,
-          age_days AS "ageDays",
-          ROW_NUMBER() OVER (
-            PARTITION BY project_id
-            ORDER BY age_days DESC, task_id
-          ) AS "priorityRank"
-        FROM escalation_candidates
-      )
-      SELECT "projectId", "taskId", title, "ageDays", "priorityRank"
-      FROM ranked
-      WHERE "priorityRank" <= $2
-      ORDER BY "projectId", "priorityRank"
-      `,
-      [ESCALATION_AGE_DAYS, ESCALATION_LIMIT_PER_PROJECT],
-    );
+    const ageDays = '(CURRENT_DATE - CAST(tasks.createdAt AS date))';
 
-    return rows.map((row) =>
-      Object.assign(new EscalationCandidateDto(), {
-        projectId: row.projectId,
-        taskId: row.taskId,
-        title: row.title,
-        ageDays: Number(row.ageDays),
-        priorityRank: Number(row.priorityRank),
-      }),
-    );
+    const candidates = this.tasks
+      .createQueryBuilder('tasks')
+      .innerJoin('tasks.project', 'project')
+      .select('tasks.projectId', 'projectId')
+      .addSelect('tasks.id', 'taskId')
+      .addSelect('tasks.title', 'title')
+      .addSelect(ageDays, 'ageDays')
+      .where("tasks.status <> 'done'")
+      .andWhere('tasks.deletedAt IS NULL')
+      .andWhere("project.status = 'active'")
+      .andWhere(`${ageDays} > :ageDays`, { ageDays: ESCALATION_AGE_DAYS });
+
+    const ranked = this.tasks.manager
+      .createQueryBuilder()
+      .select('candidates."projectId"', 'projectId')
+      .addSelect('candidates."taskId"', 'taskId')
+      .addSelect('candidates.title', 'title')
+      .addSelect('candidates."ageDays"', 'ageDays')
+      .addSelect(
+        `ROW_NUMBER() OVER (
+          PARTITION BY candidates."projectId"
+          ORDER BY candidates."ageDays" DESC, candidates."taskId"
+        )`,
+        'priorityRank',
+      )
+      .from('escalation_candidates', 'candidates');
+
+    const rows = await this.tasks.manager
+      .createQueryBuilder()
+      .addCommonTableExpression(candidates, 'escalation_candidates')
+      .addCommonTableExpression(ranked, 'ranked')
+      .select('ranked."projectId"', 'projectId')
+      .addSelect('ranked."taskId"', 'taskId')
+      .addSelect('ranked.title', 'title')
+      .addSelect('ranked."ageDays"', 'ageDays')
+      .addSelect('ranked."priorityRank"', 'priorityRank')
+      .from('ranked', 'ranked')
+      .where('ranked."priorityRank" <= :limit', {
+        limit: ESCALATION_LIMIT_PER_PROJECT,
+      })
+      .orderBy('projectId', 'ASC')
+      .addOrderBy('priorityRank', 'ASC')
+      .getRawMany<EscalationRow>();
+
+    return rows.map((row) => ({
+      projectId: row.projectId,
+      taskId: row.taskId,
+      title: row.title,
+      ageDays: Number(row.ageDays),
+      priorityRank: Number(row.priorityRank),
+    }));
   }
 
   private async requireProject(projectId: string): Promise<void> {
