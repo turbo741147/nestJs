@@ -49,7 +49,7 @@ export class TypeormTaskService {
       deletedAt: null,
     });
     const saved = await this.tasks.save(task);
-    return toTaskResponse(saved);
+    return this.toTaskResponse(saved);
   }
 
   async findByProject(
@@ -66,7 +66,7 @@ export class TypeormTaskService {
       skip: offset,
     });
     return Object.assign(new TaskListResponseDto(), {
-      items: tasks.map((task) => toTaskResponse(task)),
+      items: tasks.map((task) => this.toTaskResponse(task)),
       limit,
       offset,
     });
@@ -74,7 +74,7 @@ export class TypeormTaskService {
 
   async findOne(taskId: string): Promise<TaskResponseDto> {
     const task = await this.requireTask(taskId);
-    return toTaskResponse(task);
+    return this.toTaskResponse(task);
   }
 
   async update(taskId: string, dto: UpdateTaskDto): Promise<TaskResponseDto> {
@@ -101,13 +101,13 @@ export class TypeormTaskService {
     task.updatedAt = new Date();
 
     const saved = await this.tasks.save(task);
-    return toTaskResponse(saved);
+    return this.toTaskResponse(saved);
   }
 
   async remove(taskId: string): Promise<TaskResponseDto> {
     const task = await this.requireTask(taskId);
     await this.tasks.delete(taskId);
-    return toTaskResponse(task);
+    return this.toTaskResponse(task);
   }
 
   private async requireProject(projectId: string): Promise<void> {
@@ -139,18 +139,18 @@ export class TypeormTaskService {
     }
     return task;
   }
-}
 
-function toTaskResponse(task: Task): TaskResponseDto {
-  return Object.assign(new TaskResponseDto(), {
-    id: task.id,
-    title: task.title,
-    description: task.description,
-    status: task.status,
-    projectId: task.projectId,
-    assigneeId: task.assigneeId,
-    createdAt: task.createdAt,
-    updatedAt: task.updatedAt,
-    completedAt: task.completedAt,
-  });
+  private toTaskResponse(task: Task): TaskResponseDto {
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      projectId: task.projectId,
+      assigneeId: task.assigneeId,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      completedAt: task.completedAt,
+    };
+  }
 }
