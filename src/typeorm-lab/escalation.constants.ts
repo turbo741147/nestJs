@@ -1,0 +1,2 @@
+export const ESCALATION_AGE_DAYS = 7;
+export const ESCALATION_LIMIT_PER_PROJECT = 5;
