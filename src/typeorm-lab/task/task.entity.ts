@@ -5,8 +5,8 @@ import {
   ManyToOne,
   PrimaryColumn,
 } from 'typeorm';
-import type { Project } from './project.entity.js';
-import type { User } from './user.entity.js';
+import type { Project } from '../project/project.entity.js';
+import type { User } from '../user/user.entity.js';
 
 @Entity({ name: 'tasks' })
 export class Task {

@@ -1,18 +1,14 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { IsNull, Repository } from 'typeorm';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { TaskListQueryDto } from './dto/task-list-query.dto.js';
 import { TaskListResponseDto } from './dto/task-list-response.dto.js';
 import { TaskResponseDto } from './dto/task-response.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
-import { Project } from './entities/project.entity.js';
-import { Task } from './entities/task.entity.js';
-import { User } from './entities/user.entity.js';
+import { ProjectRepository } from './project/project.repository.js';
+import { Task } from './task/task.entity.js';
+import { TaskRepository } from './task/task.repository.js';
+import { UserRepository } from './user/user.repository.js';
 
 const DEFAULT_LIMIT = 20;
 const DEFAULT_OFFSET = 0;
@@ -20,12 +16,9 @@ const DEFAULT_OFFSET = 0;
 @Injectable()
 export class TypeormTaskService {
   constructor(
-    @InjectRepository(Task)
-    private readonly tasks: Repository<Task>,
-    @InjectRepository(Project)
-    private readonly projects: Repository<Project>,
-    @InjectRepository(User)
-    private readonly users: Repository<User>,
+    private readonly tasks: TaskRepository,
+    private readonly projects: ProjectRepository,
+    private readonly users: UserRepository,
   ) {}
 
   async create(projectId: string, dto: CreateTaskDto): Promise<TaskResponseDto> {
@@ -59,12 +52,7 @@ export class TypeormTaskService {
     await this.requireProject(projectId);
     const limit = query.limit ?? DEFAULT_LIMIT;
     const offset = query.offset ?? DEFAULT_OFFSET;
-    const tasks = await this.tasks.find({
-      where: { projectId, deletedAt: IsNull() },
-      order: { createdAt: 'DESC', id: 'ASC' },
-      take: limit,
-      skip: offset,
-    });
+    const tasks = await this.tasks.findActiveByProject(projectId, limit, offset);
     return Object.assign(new TaskListResponseDto(), {
       items: tasks.map((task) => this.toTaskResponse(task)),
       limit,
@@ -106,34 +94,26 @@ export class TypeormTaskService {
 
   async remove(taskId: string): Promise<TaskResponseDto> {
     const task = await this.requireTask(taskId);
-    await this.tasks.delete(taskId);
+    await this.tasks.deleteById(taskId);
     return this.toTaskResponse(task);
   }
 
   private async requireProject(projectId: string): Promise<void> {
-    const project = await this.projects.findOne({
-      where: { id: projectId },
-      select: { id: true },
-    });
+    const project = await this.projects.findById(projectId);
     if (!project) {
       throw new NotFoundException(`Project ${projectId} not found`);
     }
   }
 
   private async requireUser(userId: string): Promise<void> {
-    const user = await this.users.findOne({
-      where: { id: userId },
-      select: { id: true },
-    });
+    const user = await this.users.findById(userId);
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
   }
 
   private async requireTask(taskId: string): Promise<Task> {
-    const task = await this.tasks.findOne({
-      where: { id: taskId, deletedAt: IsNull() },
-    });
+    const task = await this.tasks.findActiveById(taskId);
     if (!task) {
       throw new NotFoundException(`Task ${taskId} not found`);
     }

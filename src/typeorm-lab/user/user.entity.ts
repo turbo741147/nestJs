@@ -1,16 +1,19 @@
 import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
-import type { Task } from './task.entity.js';
+import type { Task } from '../task/task.entity.js';
 
-@Entity({ name: 'projects' })
-export class Project {
+@Entity({ name: 'users' })
+export class User {
   @PrimaryColumn({ type: 'text' })
   id: string;
+
+  @Column({ type: 'text', unique: true })
+  email: string;
 
   @Column({ type: 'text' })
   name: string;
 
-  @Column({ type: 'text', nullable: true })
-  description: string | null;
+  @Column({ type: 'text' })
+  role: string;
 
   @Column({ type: 'text', default: 'active' })
   status: string;
@@ -18,6 +21,6 @@ export class Project {
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @OneToMany('Task', 'project')
-  tasks: Task[];
+  @OneToMany('Task', 'assignee')
+  assignedTasks: Task[];
 }
